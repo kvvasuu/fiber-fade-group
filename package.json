@@ -1,0 +1,52 @@
+{
+  "name": "fiber-fade-group",
+  "version": "1.0.0",
+  "author": "Łukasz Kwas (https://github.com/kvvasuu)",
+  "description": "Animated show/hide component and hook for React Three Fiber with multiple shader-based fade modes.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "react",
+    "threejs",
+    "react-three-fiber",
+    "r3f",
+    "fade",
+    "transition",
+    "animation"
+  ],
+  "bugs": {
+    "url": "https://github.com/kvvasuu/fiber-fade-group/issues"
+  },
+  "homepage": "https://github.com/kvvasuu/fiber-fade-group#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kvvasuu/fiber-fade-group.git"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@types/react": "^19.2.9",
+    "@types/three": "^0.182.0",
+    "typescript": "^5.0.4"
+  },
+  "peerDependencies": {
+    "@react-three/fiber": ">=8.0.0",
+    "react": ">=18.0.0",
+    "three": ">=0.180.0"
+  }
+}
