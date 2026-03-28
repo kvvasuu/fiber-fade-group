@@ -1,4 +1,4 @@
-﻿# Fiber FadeGroup
+﻿# Fiber Fade Group
 
 [![Version](https://badgen.net/npm/v/fiber-fade-group)](https://www.npmjs.com/package/fiber-fade-group)
 
@@ -6,7 +6,7 @@ Animated show/hide component and hook for [React Three Fiber](https://github.com
 
 ## Description
 
-**Fiber FadeGroup** lets you animate objects in and out of your R3F scene using shader-based effects. It patches materials at compile time via `onBeforeCompile`, leaving original shaders intact and avoiding unnecessary re-renders.
+**Fiber Fade Group** lets you animate objects in and out of your R3F scene using shader-based effects. It patches materials at compile time via `onBeforeCompile`, leaving original shaders intact and avoiding unnecessary re-renders.
 
 Four fade modes are available:
 
