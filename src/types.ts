@@ -1,4 +1,6 @@
-import { Material, Object3D } from "three";
+import { ThreeElements } from "@react-three/fiber";
+import { ReactNode } from "react";
+import { Group, Material, Object3D } from "three";
 import { fadeShaders } from "./shaders";
 
 export const PATCHED = Symbol("fadePatched");
@@ -66,3 +68,11 @@ export interface UseFadeGroupReturn {
   /** True while the fade animation is in progress. */
   isFading: import("react").RefObject<boolean>;
 }
+
+export type FadeGroupProps = ThreeElements["group"] &
+  UseFadeGroupOptions & {
+    children?: ReactNode;
+    visible?: boolean;
+  };
+
+export type FadeGroupRef = Group & UseFadeGroupReturn;
