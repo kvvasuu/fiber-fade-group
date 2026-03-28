@@ -24,10 +24,12 @@ export function useFadeGroup(
   const isFading = useRef(false);
   const shadersMap = useRef<Map<Material, ShaderRef>>(new Map());
   const meshesMap = useRef<Map<Mesh, boolean>>(new Map());
+  const fadeHiddenSet = useRef<Set<Mesh>>(new Set());
   const completeFiredRef = useRef(false);
 
   const needsUpdateRef = useRef(false);
   const prevVisibleRef = useRef(visible);
+  const prevFadeValueRef = useRef(fade.current.value);
 
   const threshold = fadeModeThresholds[mode ?? "alpha"];
 
@@ -38,6 +40,7 @@ export function useFadeGroup(
         if ((obj as Mesh).isMesh) {
           const mesh = obj as Mesh;
           (mesh as any)[ORIGINAL_VISIBLE] = mesh.visible;
+          fadeHiddenSet.current.add(mesh);
           mesh.visible = false;
         }
       });
@@ -45,6 +48,7 @@ export function useFadeGroup(
 
     return () => {
       if (!root) return;
+      fadeHiddenSet.current.clear();
       root.traverse((obj) => {
         if ((obj as Mesh).isMesh) {
           const mesh = obj as Mesh;
@@ -95,30 +99,35 @@ export function useFadeGroup(
   useFrame((_state, delta) => {
     if (!needsUpdateRef.current && !manual) return;
 
-    const target = visible ? 1 : 0;
-
     if (!manual) {
+      const target = visible ? 1 : 0;
+
       damp(fade.current, "value", target, damping, delta);
-    }
 
-    const distance = Math.abs(fade.current.value - target);
-    const animating = distance > threshold;
+      const distance = Math.abs(fade.current.value - target);
+      const animating = distance > threshold;
 
-    if (!animating && !completeFiredRef.current) {
-      fade.current.value = target;
-      completeFiredRef.current = true;
-      needsUpdateRef.current = false;
-      onFadeComplete?.(target);
-    }
+      if (!animating && !completeFiredRef.current) {
+        fade.current.value = target;
+        completeFiredRef.current = true;
+        needsUpdateRef.current = false;
+        onFadeComplete?.(target);
+      }
 
-    if (animating) {
-      invalidate();
-      completeFiredRef.current = false;
+      if (animating) {
+        invalidate();
+        completeFiredRef.current = false;
+      }
+
+      isFading.current = animating;
+    } else {
+      isFading.current = false;
     }
 
     const currentFade = fade.current.value;
+    const fadeChanged = currentFade !== prevFadeValueRef.current;
+    prevFadeValueRef.current = currentFade;
 
-    isFading.current = animating;
     isVisible.current = currentFade > threshold;
 
     shadersMap.current.forEach((shader) => {
@@ -127,11 +136,23 @@ export function useFadeGroup(
       }
     });
 
-    meshesMap.current.forEach((originallyVisible, mesh) => {
-      if (originallyVisible) {
-        mesh.visible = currentFade > threshold;
-      }
-    });
+    if (fadeChanged) {
+      const fadeVisible = currentFade > threshold;
+      meshesMap.current.forEach((originallyVisible, mesh) => {
+        if (!originallyVisible) return;
+        if (!fadeVisible) {
+          if (mesh.visible) {
+            fadeHiddenSet.current.add(mesh);
+            mesh.visible = false;
+          }
+        } else {
+          if (fadeHiddenSet.current.has(mesh)) {
+            fadeHiddenSet.current.delete(mesh);
+            mesh.visible = true;
+          }
+        }
+      });
+    }
   });
 
   return { fade, isVisible, isFading };

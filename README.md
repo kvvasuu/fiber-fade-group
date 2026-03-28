@@ -70,7 +70,23 @@ const MyObject = ({ visible }) => {
 | `manual`         | `boolean`                                      | `false`   | Disable auto-animation; control `fade.current.value` yourself.       |
 | `onFadeComplete` | `(value: number) => void`                      | –         | Called when animation reaches 0 or 1.                                |
 
-The forwarded ref exposes the underlying `Group`.
+The forwarded ref is typed as `FadeGroupRef` (`Group & UseFadeGroupReturn`) and exposes the underlying `Group` along with `fade`, `isVisible`, and `isFading` refs — the same values returned by `useFadeGroup`.
+
+```tsx
+import { useRef } from "react";
+import { FadeGroup, type FadeGroupRef } from "fiber-fade-group";
+
+const ref = useRef<FadeGroupRef>(null);
+
+<FadeGroup ref={ref} visible={isVisible}>
+  <mesh>...</mesh>
+</FadeGroup>;
+
+// Access anywhere:
+ref.current?.fade.current.value; // current fade value (0–1)
+ref.current?.isVisible.current; // true when at least partially visible
+ref.current?.isFading.current; // true while animating
+```
 
 ### `useFadeGroup(ref, visible, options)`
 
