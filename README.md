@@ -8,6 +8,8 @@ Animated show/hide component and hook for [React Three Fiber](https://github.com
 
 **Fiber Fade Group** lets you animate objects in and out of your R3F scene using shader-based effects. It patches materials at compile time via `onBeforeCompile`, leaving original shaders intact and avoiding unnecessary re-renders.
 
+⚠️ If a mesh inside `FadeGroup` shares its material instance with other meshes, the shader patch is shared as well. For per-object control, use separate material instances for meshes that should fade independently.
+
 Four fade modes are available:
 
 | Mode       | Description                                                                                                                                                                                                                                                                                                                                                                                          |
