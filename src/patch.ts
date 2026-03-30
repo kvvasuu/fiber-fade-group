@@ -2,6 +2,10 @@ import { CustomBlending, Material, Mesh, Object3D } from "three";
 import { fadeShaders } from "./shaders";
 import {
   LISTENING,
+  MaterialDescriptorInfo,
+  MaterialGetter,
+  MaterialSetter,
+  MeshMaterial,
   ORIGINAL_STATE,
   ORIGINAL_VISIBLE,
   PATCHED,
@@ -17,6 +21,35 @@ export const fadeModeThresholds: Record<FadeMode, number> = {
   noise: 0.001,
   dissolve: 0.001,
 };
+
+const toMaterials = (value: MeshMaterial): Material[] =>
+  (Array.isArray(value) ? value : [value]).filter((mat): mat is Material => Boolean(mat));
+
+function getMaterialDescriptorInfo(mesh: Mesh): MaterialDescriptorInfo {
+  const hadOwnDescriptor = Object.prototype.hasOwnProperty.call(mesh, "material");
+  const ownDescriptor = Object.getOwnPropertyDescriptor(mesh, "material");
+
+  let proto: object | null = mesh;
+  let inheritedDescriptor: PropertyDescriptor | undefined;
+  while (proto && !inheritedDescriptor) {
+    inheritedDescriptor = Object.getOwnPropertyDescriptor(proto, "material");
+    proto = Object.getPrototypeOf(proto);
+  }
+
+  const descriptor = ownDescriptor ?? inheritedDescriptor;
+
+  return {
+    hadOwnDescriptor,
+    ownDescriptor,
+    descriptor,
+    getter: descriptor?.get as MaterialGetter | undefined,
+    setter: descriptor?.set as MaterialSetter | undefined,
+  };
+}
+
+function readCurrentMaterial(mesh: Mesh, getter: MaterialGetter | undefined, fallback: MeshMaterial): MeshMaterial {
+  return getter ? getter.call(mesh) : fallback;
+}
 
 const easing = (t: number) => 1 / (1 + t + 0.48 * t * t + 0.235 * t * t * t);
 
@@ -110,7 +143,7 @@ export function patchObject(
 
     const originallyVisible =
       ORIGINAL_VISIBLE in (mesh as any) ? ((mesh as any)[ORIGINAL_VISIBLE] as boolean) : mesh.visible;
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const mats = toMaterials(mesh.material);
     mats.forEach((mat) => patchMaterial(mode, mat as PatchedMaterial, fade, shadersMap));
     meshesMap.set(mesh, originallyVisible);
     if (originallyVisible) {
@@ -135,33 +168,48 @@ export function attachListener(
 
   if ((obj as Mesh).isMesh) {
     const mesh = obj as Mesh;
-    let _lastMaterial: Mesh["material"] = mesh.material;
-    const _prevOnBeforeRender = mesh.onBeforeRender;
+    const descriptorInfo = getMaterialDescriptorInfo(mesh);
+    let _lastMaterial: MeshMaterial = mesh.material;
+    let fallbackMaterial: MeshMaterial = mesh.material;
 
-    const onBeforeRender = (renderer: any, scene: any, camera: any, geometry: any, material: any, group: any) => {
-      _prevOnBeforeRender?.call(mesh, renderer, scene, camera, geometry, material, group);
+    const syncPatchedMaterials = (nextMaterial: MeshMaterial) => {
+      const nextMats = toMaterials(nextMaterial);
+      const isAlreadyTracked = nextMats.every((mat) => shadersMap.has(mat));
+      if (nextMaterial === _lastMaterial && isAlreadyTracked) return;
 
-      // Skip FBO / off-screen passes (e.g. MeshTransmissionMaterial temporarily
-      // swaps mesh.material to a DiscardMaterial during its buffer renders).
-      if (renderer.getRenderTarget() !== null) return;
+      _lastMaterial = nextMaterial;
 
-      const current = mesh.material;
-      if (current === _lastMaterial) return;
-
-      const oldMats = Array.isArray(_lastMaterial) ? _lastMaterial : [_lastMaterial];
-      oldMats.forEach((mat) => {
-        if (mat) shadersMap.delete(mat as Material);
-      });
-      _lastMaterial = current;
-      const newMats = Array.isArray(current) ? current : [current];
-      newMats.forEach((mat) => {
-        if (mat) patchMaterial(mode, mat as PatchedMaterial, fade, shadersMap);
+      nextMats.forEach((mat) => {
+        patchMaterial(mode, mat as PatchedMaterial, fade, shadersMap);
       });
     };
 
-    mesh.onBeforeRender = onBeforeRender;
+    Object.defineProperty(mesh, "material", {
+      configurable: true,
+      enumerable: descriptorInfo.descriptor?.enumerable ?? true,
+      get() {
+        return readCurrentMaterial(this as Mesh, descriptorInfo.getter, fallbackMaterial);
+      },
+      set(value: MeshMaterial) {
+        if (descriptorInfo.setter) {
+          descriptorInfo.setter.call(this as Mesh, value);
+        } else {
+          fallbackMaterial = value;
+        }
+
+        const currentMaterial = readCurrentMaterial(this as Mesh, descriptorInfo.getter, fallbackMaterial);
+        syncPatchedMaterials(currentMaterial);
+      },
+    });
+
+    syncPatchedMaterials(readCurrentMaterial(mesh, descriptorInfo.getter, fallbackMaterial));
+
     obj.userData.__alphaFadeCleanup.push(() => {
-      if (mesh.onBeforeRender === onBeforeRender) mesh.onBeforeRender = _prevOnBeforeRender;
+      if (descriptorInfo.hadOwnDescriptor && descriptorInfo.ownDescriptor) {
+        Object.defineProperty(mesh, "material", descriptorInfo.ownDescriptor);
+      } else {
+        delete (mesh as any).material;
+      }
     });
   }
 
@@ -177,7 +225,7 @@ export function attachListener(
       if ((o as Mesh).isMesh) {
         const mesh = o as Mesh;
         meshesMap.delete(mesh);
-        const mats = Array.isArray(mesh.material) ? (mesh.material as Material[]) : [mesh.material as Material];
+        const mats = toMaterials(mesh.material);
         mats.forEach((mat) => shadersMap.delete(mat));
       }
       const cleanups = o.userData.__alphaFadeCleanup as (() => void)[] | undefined;
@@ -207,9 +255,7 @@ export function cleanupListeners(root: Object3D) {
     }
 
     if ((obj as Mesh).isMesh && (obj as Mesh).material) {
-      const mats = Array.isArray((obj as Mesh).material)
-        ? ((obj as Mesh).material as Material[])
-        : [(obj as Mesh).material as Material];
+      const mats = toMaterials((obj as Mesh).material);
       mats.forEach((mat) => {
         const m = mat as PatchedMaterial;
         const orig = m[ORIGINAL_STATE];

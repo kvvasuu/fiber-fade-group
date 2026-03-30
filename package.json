@@ -1,6 +1,6 @@
 {
   "name": "fiber-fade-group",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Łukasz Kwas (https://github.com/kvvasuu)",
   "description": "Animated show/hide component and hook for React Three Fiber with multiple shader-based fade modes.",
   "license": "MIT",

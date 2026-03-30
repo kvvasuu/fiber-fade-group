@@ -1,6 +1,6 @@
 import { ThreeElements } from "@react-three/fiber";
 import { ReactNode } from "react";
-import { Group, Material, Object3D } from "three";
+import { Group, Material, Mesh, Object3D } from "three";
 import { fadeShaders } from "./shaders";
 
 export const PATCHED = Symbol("fadePatched");
@@ -14,6 +14,18 @@ export type ShaderRef = {
   uniforms: {
     uFade: { value: number };
   };
+};
+
+export type MeshMaterial = Mesh["material"];
+export type MaterialGetter = (this: Mesh) => MeshMaterial;
+export type MaterialSetter = (this: Mesh, value: MeshMaterial) => void;
+
+export type MaterialDescriptorInfo = {
+  hadOwnDescriptor: boolean;
+  ownDescriptor?: PropertyDescriptor;
+  descriptor?: PropertyDescriptor;
+  getter?: MaterialGetter;
+  setter?: MaterialSetter;
 };
 
 export type OriginalMaterialState = {
