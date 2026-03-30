@@ -57,7 +57,10 @@ export default function FadingObject({ children }: { children: ReactNode }) {
       mode="dissolve"
       visible={isVisible}
       damping={0.3}
-      onClick={() => setIsVisible((prev) => !prev)}
+      onClick={(e) => {
+        e.stopPropagation();
+        setIsVisible((prev) => !prev);
+      }}
       onPointerOver={() => {
         setHovered(true);
       }}
