@@ -51,6 +51,21 @@ function readCurrentMaterial(mesh: Mesh, getter: MaterialGetter | undefined, fal
   return getter ? getter.call(mesh) : fallback;
 }
 
+function cleanupMaterials(materials: PatchedMaterial[]) {
+  materials.forEach((mat) => {
+    const m = mat;
+    const orig = m[ORIGINAL_STATE];
+    if (orig) {
+      m.transparent = orig.transparent;
+      m.forceSinglePass = orig.forceSinglePass;
+      m.onBeforeCompile = orig.onBeforeCompile;
+      delete m[ORIGINAL_STATE];
+    }
+    delete m[PATCHED];
+    m.needsUpdate = true;
+  });
+}
+
 const easing = (t: number) => 1 / (1 + t + 0.48 * t * t + 0.235 * t * t * t);
 
 export function damp(
@@ -227,6 +242,7 @@ export function attachListener(
         meshesMap.delete(mesh);
         const mats = toMaterials(mesh.material);
         mats.forEach((mat) => shadersMap.delete(mat));
+        cleanupMaterials(mats);
       }
       const cleanups = o.userData.__alphaFadeCleanup as (() => void)[] | undefined;
       if (cleanups) {
@@ -256,18 +272,7 @@ export function cleanupListeners(root: Object3D) {
 
     if ((obj as Mesh).isMesh && (obj as Mesh).material) {
       const mats = toMaterials((obj as Mesh).material);
-      mats.forEach((mat) => {
-        const m = mat as PatchedMaterial;
-        const orig = m[ORIGINAL_STATE];
-        if (orig) {
-          m.transparent = orig.transparent;
-          m.forceSinglePass = orig.forceSinglePass;
-          m.onBeforeCompile = orig.onBeforeCompile;
-          delete m[ORIGINAL_STATE];
-        }
-        delete m[PATCHED];
-        m.needsUpdate = true;
-      });
+      cleanupMaterials(mats);
     }
   });
 }

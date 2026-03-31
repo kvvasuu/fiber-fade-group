@@ -35,13 +35,15 @@ export function useFadeGroup(
 
   useLayoutEffect(() => {
     const root = ref.current;
-    if (root && fade.current.value === 0) {
+    if (root) {
       root.traverse((obj) => {
         if ((obj as Mesh).isMesh) {
           const mesh = obj as Mesh;
           (mesh as any)[ORIGINAL_VISIBLE] = mesh.visible;
-          fadeHiddenSet.current.add(mesh);
-          mesh.visible = false;
+          if (fade.current.value === 0) {
+            fadeHiddenSet.current.add(mesh);
+            mesh.visible = false;
+          }
         }
       });
     }
