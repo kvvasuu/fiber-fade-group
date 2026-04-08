@@ -148,10 +148,8 @@ export function useFadeGroup(
             mesh.visible = false;
           }
         } else {
-          if (fadeHiddenSet.current.has(mesh)) {
-            fadeHiddenSet.current.delete(mesh);
-            mesh.visible = true;
-          }
+          fadeHiddenSet.current.delete(mesh);
+          mesh.visible = true;
         }
       });
     }
