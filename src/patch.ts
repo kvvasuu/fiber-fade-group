@@ -152,6 +152,7 @@ export function patchObject(
   shadersMap: Map<Material, ShaderRef>,
   meshesMap: Map<Mesh, boolean>,
   mode: FadeMode,
+  fadeHiddenSet?: Set<Mesh>,
 ) {
   if ((obj as Mesh).isMesh && (obj as Mesh).material) {
     const mesh = obj as Mesh;
@@ -162,7 +163,11 @@ export function patchObject(
     mats.forEach((mat) => patchMaterial(mode, mat as PatchedMaterial, fade, shadersMap));
     meshesMap.set(mesh, originallyVisible);
     if (originallyVisible) {
-      mesh.visible = fade.value > fadeModeThresholds[mode];
+      const meshVisible = fade.value > fadeModeThresholds[mode];
+      mesh.visible = meshVisible;
+      if (!meshVisible && fadeHiddenSet) {
+        fadeHiddenSet.add(mesh);
+      }
     }
   }
 }
@@ -173,6 +178,7 @@ export function attachListener(
   shadersMap: Map<Material, ShaderRef>,
   meshesMap: Map<Mesh, boolean>,
   mode: FadeMode,
+  fadeHiddenSet?: Set<Mesh>,
 ) {
   if (obj[LISTENING]) return;
   obj[LISTENING] = true;
@@ -230,8 +236,8 @@ export function attachListener(
 
   const handleChildAdded = (event: any) => {
     const child = event.child as ListeningObject;
-    child.traverse((o) => patchObject(o, fade, shadersMap, meshesMap, mode));
-    child.traverse((o) => attachListener(o as ListeningObject, fade, shadersMap, meshesMap, mode));
+    child.traverse((o) => patchObject(o, fade, shadersMap, meshesMap, mode, fadeHiddenSet));
+    child.traverse((o) => attachListener(o as ListeningObject, fade, shadersMap, meshesMap, mode, fadeHiddenSet));
   };
 
   const handleChildRemoved = (event: any) => {
@@ -240,6 +246,7 @@ export function attachListener(
       if ((o as Mesh).isMesh) {
         const mesh = o as Mesh;
         meshesMap.delete(mesh);
+        fadeHiddenSet?.delete(mesh);
         const mats = toMaterials(mesh.material);
         mats.forEach((mat) => shadersMap.delete(mat));
         cleanupMaterials(mats);

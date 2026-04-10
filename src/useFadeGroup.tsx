@@ -73,7 +73,14 @@ export function useFadeGroup(
     });
 
     root.traverse((obj) => {
-      attachListener(obj as ListeningObject, fade.current, shadersMap.current, meshesMap.current, mode ?? "alpha");
+      attachListener(
+        obj as ListeningObject,
+        fade.current,
+        shadersMap.current,
+        meshesMap.current,
+        mode ?? "alpha",
+        fadeHiddenSet.current,
+      );
     });
 
     return () => {
